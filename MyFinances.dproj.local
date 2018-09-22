@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>2017/10/28 21:09:59.942.pas,D:\Documents\RAD Studio\Projects\Unit2.pas=C:\Users\urdans\OneDrive\Delphi\Projects\MyFinances\DataModuleUnit.pas</Transaction>
+    <Transaction>2017/10/28 21:09:59.942.dfm,D:\Documents\RAD Studio\Projects\Unit2.dfm=C:\Users\urdans\OneDrive\Delphi\Projects\MyFinances\DataModuleUnit.dfm</Transaction>
+    <Transaction>2017/10/28 21:10:11.341.pas,D:\Documents\RAD Studio\Projects\Unit1.pas=C:\Users\urdans\OneDrive\Delphi\Projects\MyFinances\MainUnit.pas</Transaction>
+    <Transaction>2017/10/28 21:10:11.341.dfm,D:\Documents\RAD Studio\Projects\Unit1.dfm=C:\Users\urdans\OneDrive\Delphi\Projects\MyFinances\MainUnit.dfm</Transaction>
+    <Transaction>2017/10/28 21:10:18.300.dproj,D:\Documents\RAD Studio\Projects\Project1.dproj=C:\Users\urdans\OneDrive\Delphi\Projects\MyFinances\MyFinances.dproj</Transaction>
+    <Transaction>2017/11/24 11:47:02.229.pas,C:\Users\urdans\OneDrive\Delphi\Projects\MyFinances\Unit2.pas=C:\Users\urdans\OneDrive\Delphi\Projects\MyFinances\PastingUnit.pas</Transaction>
+    <Transaction>2017/11/24 11:47:02.229.dfm,C:\Users\urdans\OneDrive\Delphi\Projects\MyFinances\Unit2.dfm=C:\Users\urdans\OneDrive\Delphi\Projects\MyFinances\PastingUnit.dfm</Transaction>
+    <Transaction>2017/12/31 18:47:05.910.pas,C:\Users\urdans\OneDrive\Delphi\Projects\MyFinances\Unit1.pas=C:\Users\urdans\OneDrive\Delphi\Projects\MyFinances\BatchProcessUnit.pas</Transaction>
+    <Transaction>2017/12/31 18:47:05.910.dfm,C:\Users\urdans\OneDrive\Delphi\Projects\MyFinances\Unit1.dfm=C:\Users\urdans\OneDrive\Delphi\Projects\MyFinances\BatchProcessUnit.dfm</Transaction>
+  </Transactions>
+</BorlandProject>
