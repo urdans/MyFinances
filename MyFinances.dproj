@@ -3,7 +3,7 @@
 			<ProjectGuid>{08FDA741-2A2A-483E-84EC-767E5BB1B010}</ProjectGuid>
 			<ProjectVersion>12.0</ProjectVersion>
 			<MainSource>MyFinances.dpr</MainSource>
-			<Config Condition="'$(Config)'==''">Release</Config>
+			<Config Condition="'$(Config)'==''">Debug</Config>
 			<DCC_DCCCompiler>DCC32</DCC_DCCCompiler>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">

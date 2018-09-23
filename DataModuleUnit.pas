@@ -229,12 +229,12 @@ type
     function  MOVEMENTSAmountChanged: Boolean;
     function  MOVEMENTSPostedDateAmountStatusChanged: Boolean;
     function  MOVEMENTSDateChanged: Boolean;
-    function  MOVEMENTSGetPreviousBalance(MovementId: Integer; Qry: TWQuery): Currency;
+    function  MOVEMENTSGetPreviousBalance(MovementId: Integer; FromDate: TDate; Qry: TWQuery): Currency;
     procedure MOVEMENTSCheckActiveConstraint(anAccountId: Integer);
     procedure MOVEMENTSCheckPaymentRequirements;
     procedure MOVEMENTSCheckUpdateBILLS;
     procedure MOVEMENTSComputeRB(AccountId: Integer; FromThisRecord: Integer;
-      RecomputeMode: TRecomputeRBMode = rrbm_Include);
+      RecomputeMode: TRecomputeRBMode = rrbm_Include; OldDate: TDate = 0);
     procedure MOVEMENTSGetLastAndPenultimatePaymentDates(aBillId: Integer; aDate: TDate;
       out LastDate: TDate; out PenultimateDate: TDate);
     procedure MOVEMENTSLockFields(Lock: Boolean);
@@ -519,16 +519,39 @@ begin
     raise Exception.Create('Payment does not reference any bill.');
 end;
 
-{Returns the running balance of the previous posted movement identified by MovementId, using an open Qry which contains
+{Returns the running balance of the previous posted movement of MovementId, using an open Qry that contains
 an ordered result set of movements (ordered by date, from older to newer, and by Id, ascending).
-The Id of the previous posted balance is returned on PrevId.}
-function TDM.MOVEMENTSGetPreviousBalance(MovementId: Integer; Qry: TWQuery): Currency;
+Also, makes the previous record's balance the active record within Qry.}
+function TDM.MOVEMENTSGetPreviousBalance(MovementId: Integer; FromDate: TDate; Qry: TWQuery): Currency;
 var
   PreviousId: Integer;
+  FDate: TDateField;
+  aDate: TDate;
+  DateFound: Boolean;
 begin
   Result := 0;
-  if not Qry.Locate('Id', MovementId, []) then
-    raise Exception.Create('Cannot locate movement record (Id: ' + IntToStr(MovementId) + ')');
+  if FromDate = 0 then
+  begin
+    if not Qry.Locate('Id', MovementId, []) then
+      raise Exception.Create('Cannot locate movement record (Id: ' + IntToStr(MovementId) + ')');
+  end
+  else
+  begin
+    //I will go record by record looking for the first one with the specified date
+    FDate := TDateField(Qry.FieldByName('Op_Date'));
+    DateFound := False;
+    while not Qry.Eof do
+    begin
+      if FromDate = FDate.Value then
+      begin
+        DateFound := True;
+        Break;
+      end;
+      Qry.Next;
+    end;
+    if not DateFound then
+      raise Exception.Create('Cannot locate a movement record with such a date: ' + DateToStr(FromDate));
+  end;
   PreviousId := MovementId;
   //look for the previous posted movement's running balance
   while not Qry.Bof do
@@ -543,7 +566,10 @@ begin
   if MovementId <> PreviousId then
   begin
     Result := Qry.FieldByName('Run_Balance').AsCurrency;
-    Qry.Locate('Id', MovementId, []);
+    if FromDate = 0 then
+      Qry.Locate('Id', MovementId, [])
+    else
+      Qry.Next;
   end;
 end;
 
@@ -1350,10 +1376,21 @@ end;
 procedure TDM.MOVEMENTSBeforePost(DataSet: TDataSet);
 var
   Id: Integer;
+  NewDate: TDate;
 begin
   CheckRequiredFields(MOVEMENTS);
   ZConnection1.StartTransaction;
   try
+    if MOVEMENTSDateChanged then
+    begin
+      if MOVEMENTSOp_Date.OldValue < MOVEMENTSOp_Date.Value then
+        NewDate := MOVEMENTSOp_Date.OldValue
+      else
+        NewDate := MOVEMENTSOp_Date.Value
+    end
+    else
+      NewDate := 0;
+
     if MOVEMENTSType.Value = BILLPAYMENT then
       MOVEMENTSProcessBill;
 
@@ -1367,7 +1404,7 @@ begin
       MOVEMENTSProcessInTransfer;
 
     if MOVEMENTSPostedDateAmountStatusChanged then
-      MOVEMENTSComputeRB(MOVEMENTS.ParamByName('RefId').AsInteger, Id);
+      MOVEMENTSComputeRB(MOVEMENTS.ParamByName('RefId').AsInteger, Id, rrbm_Include, NewDate);
     ZConnection1.Commit;
   except
     ZConnection1.Rollback;
@@ -1483,7 +1520,8 @@ If RecomputeMode is rrbm_Delete, that record gets deleted before and the recalcu
 following record.
 The caller should start a transaction before calling this procedure; also, the caller must commit the changes when this
 procedure returns unles this procedure throws an exception in which case the caller must roll back the changes.}
-procedure TDM.MOVEMENTSComputeRB(AccountId: Integer; FromThisRecord: Integer; RecomputeMode: TRecomputeRBMode = rrbm_Include);
+procedure TDM.MOVEMENTSComputeRB(AccountId: Integer; FromThisRecord: Integer;
+  RecomputeMode: TRecomputeRBMode = rrbm_Include; OldDate: TDate = 0);
 var
   PreviousBalance: Currency;
   ActualBalance: Currency;
@@ -1492,19 +1530,23 @@ var
   FType, FStatus: TLargeintField;
   FAmount, FRun_Balance: TFloatField;
 begin
-  Qry :=TWQuery.CreateAndOpen('SELECT Id, Type, Status, Amount, Run_Balance FROM MOVEMENTS'#10#13 +
-    'WHERE Account_Id=' + IntToStr(AccountId) + #10#13 +
-    'ORDER BY Op_Date ASC, Id ASC');
+  if (RecomputeMode = rrbm_Exclude) and (OldDate <> 0) then
+    raise Exception.Create('Wrong combination of arguments!!!S');
+
+  Qry := TWQuery.CreateAndOpen(
+    'SELECT Id, Type, Status, Op_Date, Amount, Run_Balance FROM MOVEMENTS'#10#13 +
+      'WHERE Account_Id=' + IntToStr(AccountId) + #10#13 +
+      'ORDER BY Op_Date ASC, Id ASC');
   FType := TLargeintField(Qry.FieldByName('Type'));
   FStatus := TLargeintField(Qry.FieldByName('Status'));
   FAmount := TFloatField(Qry.FieldByName('Amount'));
   FRun_Balance := TFloatField(Qry.FieldByName('Run_Balance'));
   try
-    PreviousBalance := MOVEMENTSGetPreviousBalance(FromThisRecord, Qry);
+    PreviousBalance := MOVEMENTSGetPreviousBalance(FromThisRecord, OldDate, Qry);
     if RecomputeMode = rrbm_Exclude then
     begin
-      Qry.Next;          //the cursor advaces to the next record, excluding the actual record for recomputing.
-      if Qry.Eof then    //If it is the last one, we have nothing to recompute.
+      Qry.Next; // the cursor advaces to the next record, excluding the actual record for recomputing.
+      if Qry.Eof then // If it is the last one, we have nothing to recompute.
       begin
         Qry.CloseAndFree;
         Exit;
